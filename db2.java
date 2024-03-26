@@ -1,18 +1,29 @@
-Blob dbBlob = rslt.getBlob(1); // JDBC standard way to get a Blob
-int blobLength = (int) dbBlob.length(); // Get BLOB length
-byte[] buffer = new byte[4096]; // Define your buffer; size is 4KB here
-int bytesRead = 0;
-InputStream inputStream = dbBlob.getBinaryStream();
+import java.sql.Blob;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.IOException;
 
-ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-while ((bytesRead = inputStream.read(buffer)) != -1) {
-    outputStream.write(buffer, 0, bytesRead);
+public class BlobUtil {
+
+    /**
+     * Writes the contents of a Blob from a ResultSet to the provided OutputStream.
+     * 
+     * @param resultSet The ResultSet, positioned to the correct row.
+     * @param columnIndex The index of the column containing the Blob.
+     * @param out The OutputStream to write the Blob data to.
+     * @throws SQLException If an SQL error occurs.
+     * @throws IOException If an IO error occurs.
+     */
+    public static void writeBlobToOutputStream(ResultSet resultSet, int columnIndex, OutputStream out) throws SQLException, IOException {
+        Blob dbBlob = resultSet.getBlob(columnIndex);
+        try (InputStream in = dbBlob.getBinaryStream()) {
+            byte[] buffer = new byte[1024]; // Use a buffer for efficient reading
+            int bytesRead;
+            while ((bytesRead = in.read(buffer)) != -1) {
+                out.write(buffer, 0, bytesRead);
+            }
+        } // InputStream is automatically closed here
+    }
 }
-
-byte[] blobData = outputStream.toByteArray();
-
-// Close streams to release resources
-inputStream.close();
-outputStream.close();
-
-// Now you can use blobData as needed
