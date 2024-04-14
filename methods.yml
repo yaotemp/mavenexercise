@@ -1,0 +1,12 @@
+methods:
+  - name: "computeSum"
+    parameters:
+      - 5
+      - 10
+  - name: "printMessage"
+    parameters:
+      - "Hello, world!"
+  - name: "calculateDifference"
+    parameters:
+      - 20
+      - 4
