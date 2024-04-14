@@ -1,10 +1,6 @@
-public class MethodExecutor {
-    
-}
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -15,7 +11,10 @@ import java.util.concurrent.Executors;
 public class MethodExecutor {
     public static void main(String[] args) throws Exception {
         Yaml yaml = new Yaml(new Constructor(List.class));
-        InputStream inputStream = new FileInputStream("methods.yml");
+        InputStream inputStream = MethodExecutor.class.getClassLoader().getResourceAsStream("methods.yml");
+        if (inputStream == null) {
+            throw new RuntimeException("Cannot find 'methods.yml' in the classpath");
+        }
         List<Map<String, Object>> data = yaml.load(inputStream);
 
         ExecutorService executor = Executors.newFixedThreadPool(3); // Using 3 threads
