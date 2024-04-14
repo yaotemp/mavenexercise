@@ -1,52 +1,51 @@
-import org.yaml.snakeyaml.Yaml;
-import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MethodExecutor {
     public static void main(String[] args) {
-        try (InputStream inputStream = MethodExecutor.class.getClassLoader().getResourceAsStream("methods.yml")) {
-            if (inputStream == null) {
-                throw new RuntimeException("Cannot find 'methods.yml' in the classpath");
-            }
-            Yaml yaml = new Yaml();
-            Map<String, List<Map<String, Object>>> loadedYaml = yaml.load(inputStream);
-            List<Map<String, Object>> methods = loadedYaml.get("methods");  // Access the list by the "methods" key
+        try {
+            // Establish database connection (adjust with your DB credentials)
+            Connection conn = DriverManager.getConnection("jdbc:db2://yourdburl", "username", "password");
+
+            // Load configuration and methods to be called
+            List<Map<String, Object>> methods = loadMethodConfiguration();
 
             ExecutorService executor = Executors.newFixedThreadPool(3); // Using 3 threads
             for (Map<String, Object> item : methods) {
                 executor.submit(() -> {
                     try {
                         String methodName = (String) item.get("name");
-                        List<Object> params = (List<Object>) item.get("parameters");
-                        Class<?>[] paramTypes = new Class[params.size()];
+                        List<Object> params = (List<Object>) item.getOrDefault("parameters", Collections.emptyList());
+                        Class<?>[] paramTypes = new Class[1 + params.size()]; // Always at least one for Connection
+                        Object[] argsWithConn = new Object[1 + params.size()];
+                        paramTypes[0] = Connection.class; // First parameter is always Connection
+                        argsWithConn[0] = conn; // First argument is always the connection
+
                         for (int i = 0; i < params.size(); i++) {
-                            paramTypes[i] = params.get(i).getClass();
+                            paramTypes[i + 1] = params.get(i).getClass(); // Adjust index by +1 for params
+                            argsWithConn[i + 1] = params.get(i); // Corresponding arguments
                         }
-                        Method method = MethodExecutor.class.getMethod(methodName, paramTypes);
-                        method.invoke(null, params.toArray());
+                        
+                        Method method = MethodUtilities.class.getMethod(methodName, paramTypes);
+                        method.invoke(null, argsWithConn); // Invoke method with connection and possibly other parameters
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                 });
             }
+
             executor.shutdown();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public static void computeSum(Integer a, Integer b) {
-        System.out.println("Sum of " + a + " and " + b + " is " + (a + b));
-    }
-
-    public static void printMessage(String message) {
-        System.out.println(message);
-    }
-
-    public static void calculateDifference(Integer a, Integer b) {
-        System.out.println("Difference between " + a + " and " + b + " is " + (a - b));
+    private static List<Map<String, Object>> loadMethodConfiguration() {
+        // Implement YAML loading logic here
+        return null;
     }
 }
