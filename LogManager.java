@@ -1,59 +1,53 @@
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+
 public class LogManager {
     private static final BlockingQueue<String> logQueue = new LinkedBlockingQueue<>();
-    private static volatile boolean finished = false;
-    private static BufferedWriter logWriter;
-    private static Thread logProcessor;
+    private static final ExecutorService logExecutor = Executors.newSingleThreadExecutor();
+    private static volatile boolean shutdown = false;
+    private static Path logFilePath;
 
-    public static void initializeLogger(String folderPath, String fileName) {
-        try {
-            File logDirectory = new File(folderPath);
-            if (!logDirectory.exists()) {
-                logDirectory.mkdirs(); // Create the directory if it does not exist
-            }
-            File logFile = new File(logDirectory, fileName);
-            // Open the log file in append mode
-            logWriter = new BufferedWriter(new FileWriter(logFile, true));
-            startLogProcessor();
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to open log file: " + folderPath + "/" + fileName, e);
-        }
-    }
-
-    private static void startLogProcessor() {
-        logProcessor = new Thread(() -> {
+    public static void initialize(Path logFilePath) {
+        LogManager.logFilePath = logFilePath;
+        logExecutor.execute(() -> {
             try {
-                while (!finished || !logQueue.isEmpty()) {
-                    String logEntry = logQueue.take();
-                    logWriter.write(logEntry + "\n");
-                    logWriter.flush();  // Ensure data is written to file
+                while (!shutdown) {
+                    String message = logQueue.take();
+                    writeToLogFile(message);
                 }
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (IOException e) {
+                System.err.println("Logging thread interrupted");
                 e.printStackTrace();
-            } finally {
-                try {
-                    logWriter.close();  // Close the writer when finished
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
             }
-        }, "Log-Processor-Thread");
-        logProcessor.start();
+        });
+    }
+
+    private static void writeToLogFile(String message) {
+        try {
+            Files.write(logFilePath, (message + System.lineSeparator()).getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            System.err.println("Failed to write log message to file");
+            e.printStackTrace();
+        }
     }
 
     public static void log(String message) {
-        if (!finished) {  // Only log if the system hasn't been marked as finished
-            try {
-                logQueue.put(message);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+        try {
+            logQueue.put(message);
+        } catch (InterruptedException e) {
+            System.err.println("Interrupted while adding message to log queue");
+            e.printStackTrace();
         }
     }
 
-    public static void stopLogging() throws InterruptedException {
-        finished = true;
-        logProcessor.join(); // Wait for the logging thread to finish processing
+    public static void shutdown() {
+        shutdown = true;
+        logExecutor.shutdown();
     }
 }
