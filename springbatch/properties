@@ -1,45 +1,34 @@
-import java.io.FileInputStream;
-import java.util.Properties;
 import java.util.logging.*;
 
-public class CustomLoggerConfigurator {
+public class LoggerSetup {
+    private static final Logger systemLogger = Logger.getLogger("SystemLogger");
+    private static final Logger businessLogger = Logger.getLogger("BusinessLogger");
+
+    public static void setupLoggers() {
+        try {
+            FileHandler systemLogHandler = new FileHandler("%h/SystemLog%u.log", true);
+            systemLogHandler.setFormatter(new SimpleFormatter());
+            systemLogHandler.setLevel(Level.FINE);
+            systemLogger.addHandler(systemLogHandler);
+            systemLogger.setLevel(Level.FINE);
+            systemLogger.setUseParentHandlers(false);
+
+            FileHandler businessLogHandler = new FileHandler("%h/BusinessLog%u.log", true);
+            businessLogHandler.setFormatter(new SimpleFormatter());
+            businessLogHandler.setLevel(Level.INFO);
+            businessLogger.addHandler(businessLogHandler);
+            businessLogger.setLevel(Level.INFO);
+            businessLogger.setUseParentHandlers(false);
+
+        } catch (IOException e) {
+            System.err.println("Error setting up log handlers: " + e.getMessage());
+        }
+    }
 
     public static void main(String[] args) {
-        Logger systemLogger = configureLogger("SystemLogger", "systemLogger.properties");
-        Logger businessLogger = configureLogger("BusinessLogger", "businessLogger.properties");
+        setupLoggers();
 
         systemLogger.fine("This is a system log message.");
         businessLogger.info("This is a business log message.");
-    }
-
-    private static Logger configureLogger(String loggerName, String propertiesFileName) {
-        Logger logger = Logger.getLogger(loggerName);
-
-        try (FileInputStream fis = new FileInputStream(propertiesFileName)) {
-            LogManager.getLogManager().readConfiguration(fis);
-        } catch (IOException e) {
-            System.err.println("Could not load properties for logger " + loggerName + ": " + e.getMessage());
-            return logger;
-        }
-
-        try {
-            // Reload properties to configure FileHandler specifically
-            Properties props = new Properties();
-            try (FileInputStream fis = new FileInputStream(propertiesFileName)) {
-                props.load(fis);
-            }
-            String pattern = props.getProperty("java.util.logging.FileHandler.pattern");
-            boolean append = Boolean.parseBoolean(props.getProperty("java.util.logging.FileHandler.append", "true"));
-            FileHandler fileHandler = new FileHandler(pattern, append);
-            fileHandler.setLevel(Level.parse(props.getProperty("java.util.logging.FileHandler.level")));
-            fileHandler.setFormatter(new SimpleFormatter());  // Assuming SimpleFormatter is used
-            logger.addHandler(fileHandler);
-            logger.setLevel(Level.parse(props.getProperty("java.util.logging.FileHandler.level")));
-            logger.setUseParentHandlers(false);
-        } catch (IOException | SecurityException e) {
-            System.err.println("Failed to configure logger " + loggerName + ": " + e.getMessage());
-        }
-
-        return logger;
     }
 }
