@@ -5,33 +5,14 @@ import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 public class MethodExecutionTracker {
-    static class AppConfig {
-        private List<MethodConfig> methodList;
-        private DbConfig dbConfig;
-
-        public AppConfig(List<MethodConfig> methodList, DbConfig dbConfig) {
-            this.methodList = methodList;
-            this.dbConfig = dbConfig;
-        }
-
-        public List<MethodConfig> getMethodList() {
-            return methodList;
-        }
-
-        public DbConfig getDbConfig() {
-            return dbConfig;
-        }
-    }
-
     static class MethodConfig {
         private String methodName;
-        private String parameters; // Parameters as a single string
+        private String parameters;
         private int repeatTimes;
 
         public MethodConfig(String methodName, String parameters, int repeatTimes) {
@@ -39,83 +20,37 @@ public class MethodExecutionTracker {
             this.parameters = parameters;
             this.repeatTimes = repeatTimes;
         }
-
-        public String getMethodName() {
-            return methodName;
-        }
-
-        public String getParameters() {
-            return parameters;
-        }
-
-        public int getRepeatTimes() {
-            return repeatTimes;
-        }
-
-        // Method to simulate execution
-        public void execute() {
-            List<String> parameterList = Arrays.asList(parameters.split(","));
-            System.out.println("Executing " + methodName + " with parameters " + parameterList);
-        }
     }
 
-    static class DbConfig {
-        private String connection;
-        private String username;
-        private String password;
-
-        public DbConfig(String connection, String username, String password) {
-            this.connection = connection;
-            this.username = username;
-            this.password = password;
-        }
-
-        public String getConnection() {
-            return connection;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-    }
-
-    public static void main(String[] args) {
-        AppConfig config = new AppConfig(
-            new ArrayList<>(List.of(
-                new MethodConfig("method1", "param1,param2", 2),
-                new MethodConfig("method2", "param3,param4", 1)
-            )),
-            new DbConfig("jdbc:mysql://localhost:3306/mydb", "user", "password")
-        );
-
-        List<MethodConfig> executionList = new ArrayList<>(config.getMethodList());
-        Collections.shuffle(executionList);
-
-        // Execute methods
-        executionList.forEach(MethodConfig::execute);
-
-        // Reset repeatTimes and prepare new AppConfig for output
-        executionList.forEach(method -> method.repeatTimes = 1);
-        AppConfig newConfig = new AppConfig(executionList, config.getDbConfig());
-
-        // Serialize the entire new AppConfig to YAML
-        writeConfigToYaml(newConfig);
-    }
-
-    private static void writeConfigToYaml(AppConfig config) {
+    private static void writeConfigToYaml(List<MethodConfig> methodConfigs) {
         DumperOptions options = new DumperOptions();
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         options.setPrettyFlow(true);
-        Yaml yaml = new Yaml(new Constructor(AppConfig.class), new Representer(), options);
+        Yaml yaml = new Yaml(new Constructor(MethodConfig.class), new Representer(), options);
 
-        try (FileWriter writer = new FileWriter("new_config.yml")) {
-            yaml.dump(config, writer);
+        // Define the output directory
+        String outputDirectory = "path/to/output/directory"; // Modify this path as needed
+        // Create a timestamp
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        String timestamp = now.format(formatter);
+        // Construct the full path with timestamp
+        String filePath = outputDirectory + "/config_" + timestamp + ".yml";
+
+        try (FileWriter writer = new FileWriter(filePath)) {
+            yaml.dumpAll(methodConfigs.iterator(), writer);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    // Example usage
+    public static void main(String[] args) {
+        List<MethodConfig> methodConfigs = List.of(
+            new MethodConfig("methodName1", "parameters1", 1),
+            new MethodConfig("methodName2", "parameters2", 1)
+        );
+
+        writeConfigToYaml(methodConfigs);
     }
 }
