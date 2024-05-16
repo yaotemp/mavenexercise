@@ -3,12 +3,13 @@ import com.google.gson.JsonObject;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.FileHandler;
@@ -121,18 +122,34 @@ public class MultiThreadedJdbcTransaction {
 
     public static void replayTransactions(String logFileName) {
         try (BufferedReader br = new BufferedReader(new FileReader(logFileName))) {
+            List<String> batch = new ArrayList<>();
             String line;
-            Gson gson = new Gson();
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty()) continue;
-                JsonObject logEntry = gson.fromJson(line, JsonObject.class);
-                String methodName = logEntry.get("method").getAsString();
-                Object[] params = gson.fromJson(logEntry.get("params"), Object[].class);
+                batch.add(line);
 
-                replayTransaction(methodName, params);
+                if (batch.size() == 500) {
+                    processBatch(batch);
+                    batch.clear();
+                }
+            }
+            // Process any remaining lines in the batch
+            if (!batch.isEmpty()) {
+                processBatch(batch);
             }
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private static void processBatch(List<String> batch) {
+        Gson gson = new Gson();
+        for (String entry : batch) {
+            JsonObject logEntry = gson.fromJson(entry, JsonObject.class);
+            String methodName = logEntry.get("method").getAsString();
+            Object[] params = gson.fromJson(logEntry.get("params"), Object[].class);
+
+            replayTransaction(methodName, params);
         }
     }
 
