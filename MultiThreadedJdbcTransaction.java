@@ -46,18 +46,28 @@ public class MultiThreadedJdbcTransaction {
     static class JdbcTransactionTask implements Runnable {
 
         private final String taskName;
-        private final Logger logger;
+        private final Logger transactionLogger;
+        private final Logger processingTimeLogger;
+        private final Logger threadSummaryLogger;
         private final Gson gson = new Gson();
 
         public JdbcTransactionTask(String taskName) {
             this.taskName = taskName;
-            this.logger = Logger.getLogger(taskName);
-            setupLogger();
+            this.transactionLogger = Logger.getLogger(taskName + ".transaction");
+            this.processingTimeLogger = Logger.getLogger(taskName + ".processingTime");
+            this.threadSummaryLogger = Logger.getLogger(taskName + ".summary");
+            setupLoggers();
         }
 
-        private void setupLogger() {
+        private void setupLoggers() {
+            setupLogger(transactionLogger, taskName + ".log");
+            setupLogger(processingTimeLogger, taskName + ".processingTime.log");
+            setupLogger(threadSummaryLogger, taskName + ".summary.log");
+        }
+
+        private void setupLogger(Logger logger, String fileName) {
             try {
-                FileHandler fileHandler = new FileHandler(taskName + ".log", true);
+                FileHandler fileHandler = new FileHandler(fileName, true);
                 fileHandler.setFormatter(new SimpleFormatter());
                 logger.addHandler(fileHandler);
                 logger.setLevel(Level.INFO);
@@ -114,8 +124,8 @@ public class MultiThreadedJdbcTransaction {
             logEntry.addProperty("method", methodName);
             logEntry.add("params", gson.toJsonTree(params));
 
-            synchronized (logger) {
-                logger.info(gson.toJson(logEntry));
+            synchronized (transactionLogger) {
+                transactionLogger.info(gson.toJson(logEntry));
             }
         }
     }
