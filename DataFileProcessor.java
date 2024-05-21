@@ -13,6 +13,9 @@ public class DataFileProcessor {
         System.out.print("Please enter the folder path: ");
         String folderPath = scanner.nextLine();
 
+        System.out.print("Please enter the number of threads: ");
+        int threadSize = scanner.nextInt();
+
         Path path = Paths.get(folderPath);
 
         // Check if the folder exists, if not, create it
@@ -30,6 +33,12 @@ public class DataFileProcessor {
         try {
             List<Path> dataFiles = listDataFiles(path);
             Collections.sort(dataFiles);
+
+            if (dataFiles.size() < threadSize) {
+                System.out.printf("Error: There are not enough .data files for the specified thread size (%d).%n", threadSize);
+                System.out.printf("Number of .data files found: %d%n", dataFiles.size());
+                return;
+            }
 
             System.out.println("Number of .data files: " + dataFiles.size());
             System.out.println("Sorted .data files:");
