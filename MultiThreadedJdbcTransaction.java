@@ -1,15 +1,17 @@
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.FileHandler;
@@ -23,61 +25,129 @@ public class MultiThreadedJdbcTransaction {
     private static final String JDBC_USER = "yourusername";
     private static final String JDBC_PASSWORD = "yourpassword";
 
+    // Centralized logger for general logs
+    private static final Logger centralizedLogger = Logger.getLogger("CentralizedLogger");
+
+    static {
+        setupCentralizedLogger();
+    }
+
+    private static void setupCentralizedLogger() {
+        try {
+            FileHandler fileHandler = new FileHandler("centralized.log", true); // Append mode enabled
+            fileHandler.setFormatter(new SimpleFormatter());
+            centralizedLogger.addHandler(fileHandler);
+            centralizedLogger.setLevel(Level.INFO);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void main(String[] args) {
-        ExecutorService executorService = Executors.newFixedThreadPool(5);
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Please enter the folder path: ");
+        String folderPath = scanner.nextLine();
 
-        for (int i = 0; i < 5; i++) {
-            executorService.execute(new JdbcTransactionTask("Task-" + i));
+        System.out.print("Please enter the number of threads: ");
+        int threadSize = scanner.nextInt();
+
+        Path path = Paths.get(folderPath);
+
+        // Check if the folder exists, if not, create it
+        if (!Files.exists(path)) {
+            try {
+                Files.createDirectories(path);
+                centralizedLogger.info("The folder did not exist, so it was created.");
+            } catch (IOException e) {
+                centralizedLogger.severe("Failed to create the directory. Exiting.");
+                e.printStackTrace();
+                return;
+            }
         }
 
-        executorService.shutdown();
+        try {
+            List<Path> dataFiles = listDataFiles(path);
+            Collections.sort(dataFiles);
 
-        // Wait for all tasks to complete before replaying transactions
-        while (!executorService.isTerminated()) {
-            // Busy-wait
+            if (dataFiles.size() < threadSize) {
+                centralizedLogger.severe(String.format("Error: There are not enough .data files for the specified thread size (%d).", threadSize));
+                centralizedLogger.severe(String.format("Number of .data files found: %d", dataFiles.size()));
+                return;
+            }
+
+            centralizedLogger.info("Number of .data files: " + dataFiles.size());
+            centralizedLogger.info("Sorted .data files:");
+            for (Path file : dataFiles) {
+                centralizedLogger.info(file.getFileName().toString());
+            }
+
+            ExecutorService executorService = Executors.newFixedThreadPool(threadSize);
+
+            for (int i = 0; i < threadSize; i++) {
+                executorService.execute(new JdbcTransactionTask("Task-" + i, folderPath));
+            }
+
+            executorService.shutdown();
+
+            // Wait for all tasks to complete before replaying transactions
+            while (!executorService.isTerminated()) {
+                // Busy-wait
+            }
+
+            // Process each log file
+            for (Path file : dataFiles) {
+                replayTransactions(file);
+            }
+
+        } catch (IOException e) {
+            centralizedLogger.severe("IOException occurred.");
+            e.printStackTrace();
         }
 
-        // Replay transactions from the log files
-        for (int i = 0; i < 5; i++) {
-            replayTransactions("Task-" + i + ".log");
-        }
+        scanner.close();
+    }
+
+    public static List<Path> listDataFiles(Path path) throws IOException {
+        List<Path> dataFiles = new ArrayList<>();
+
+        Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (file.toString().endsWith(".data")) {
+                    dataFiles.add(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+
+        return dataFiles;
     }
 
     static class JdbcTransactionTask implements Runnable {
 
         private final String taskName;
-        private final Logger transactionLogger;
-        private final Logger processingTimeLogger;
-        private final Logger threadSummaryLogger;
+        private final String folderPath;
         private final Gson gson = new Gson();
+        private final BufferedWriter writer;
 
-        public JdbcTransactionTask(String taskName) {
+        public JdbcTransactionTask(String taskName, String folderPath) {
             this.taskName = taskName;
-            this.transactionLogger = Logger.getLogger(taskName + ".transaction");
-            this.processingTimeLogger = Logger.getLogger(taskName + ".processingTime");
-            this.threadSummaryLogger = Logger.getLogger(taskName + ".summary");
-            setupLoggers();
+            this.folderPath = folderPath;
+            String logFileName = folderPath + "/" + taskName + "-" + System.currentTimeMillis() + ".log";
+            this.writer = createWriter(logFileName);
         }
 
-        private void setupLoggers() {
-            setupLogger(transactionLogger, taskName + ".log");
-            setupLogger(processingTimeLogger, taskName + ".processingTime.log");
-            setupLogger(threadSummaryLogger, taskName + ".summary.log");
-        }
-
-        private void setupLogger(Logger logger, String fileName) {
+        private BufferedWriter createWriter(String logFileName) {
             try {
-                FileHandler fileHandler = new FileHandler(fileName, true);
-                fileHandler.setFormatter(new SimpleFormatter());
-                logger.addHandler(fileHandler);
-                logger.setLevel(Level.INFO);
+                return new BufferedWriter(new FileWriter(logFileName, false)); // Create a new file for each run
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new RuntimeException("Failed to create log writer", e);
             }
         }
 
         @Override
         public void run() {
+            long startTime = System.currentTimeMillis();
             Connection connection = null;
             try {
                 connection = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASSWORD);
@@ -104,6 +174,9 @@ public class MultiThreadedJdbcTransaction {
                         e.printStackTrace();
                     }
                 }
+                long endTime = System.currentTimeMillis();
+                logThreadSummary(startTime, endTime);
+                closeWriter();
             }
         }
 
@@ -124,14 +197,34 @@ public class MultiThreadedJdbcTransaction {
             logEntry.addProperty("method", methodName);
             logEntry.add("params", gson.toJsonTree(params));
 
-            synchronized (transactionLogger) {
-                transactionLogger.info(gson.toJson(logEntry));
+            try {
+                writer.write(gson.toJson(logEntry));
+                writer.newLine();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void logThreadSummary(long startTime, long endTime) {
+            long duration = endTime - startTime;
+            String summary = String.format("Thread %s completed in %d ms", taskName, duration);
+
+            synchronized (centralizedLogger) {
+                centralizedLogger.info(summary);
+            }
+        }
+
+        private void closeWriter() {
+            try {
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
 
-    public static void replayTransactions(String logFileName) {
-        try (BufferedReader br = new BufferedReader(new FileReader(logFileName))) {
+    public static void replayTransactions(Path logFilePath) {
+        try (BufferedReader br = new BufferedReader(new FileReader(logFilePath.toFile()))) {
             List<String> batch = new ArrayList<>();
             String line;
             while ((line = br.readLine()) != null) {
@@ -148,6 +241,7 @@ public class MultiThreadedJdbcTransaction {
                 processBatch(batch);
             }
         } catch (IOException e) {
+            centralizedLogger.severe("IOException occurred during replay.");
             e.printStackTrace();
         }
     }
@@ -175,9 +269,11 @@ public class MultiThreadedJdbcTransaction {
                 connection.commit();
             } catch (SQLException e) {
                 connection.rollback();
+                centralizedLogger.severe("SQLException occurred during transaction.");
                 e.printStackTrace();
             }
         } catch (SQLException e) {
+            centralizedLogger.severe("SQLException occurred while establishing connection.");
             e.printStackTrace();
         }
     }
