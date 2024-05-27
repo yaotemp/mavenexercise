@@ -65,6 +65,9 @@ public class MultiThreadedJdbcTransaction {
             }
         }
 
+        // Delete existing log files from previous runs
+        deleteExistingLogFiles(path, threadSize);
+
         try {
             List<Path> dataFiles = listDataFiles(path);
             Collections.sort(dataFiles);
@@ -123,6 +126,18 @@ public class MultiThreadedJdbcTransaction {
         return dataFiles;
     }
 
+    public static void deleteExistingLogFiles(Path folderPath, int threadSize) {
+        for (int i = 0; i < threadSize; i++) {
+            Path logFilePath = folderPath.resolve("Task-" + i + ".log");
+            try {
+                Files.deleteIfExists(logFilePath);
+            } catch (IOException e) {
+                centralizedLogger.severe("Failed to delete existing log file: " + logFilePath);
+                e.printStackTrace();
+            }
+        }
+    }
+
     static class JdbcTransactionTask implements Runnable {
 
         private final String taskName;
@@ -133,7 +148,7 @@ public class MultiThreadedJdbcTransaction {
         public JdbcTransactionTask(String taskName, String folderPath) {
             this.taskName = taskName;
             this.folderPath = folderPath;
-            String logFileName = folderPath + "/" + taskName + "-" + System.currentTimeMillis() + ".log";
+            String logFileName = folderPath + "/" + taskName + ".log";
             this.writer = createWriter(logFileName);
         }
 
