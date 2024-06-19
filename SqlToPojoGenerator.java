@@ -1,29 +1,20 @@
 import java.io.*;
 import java.nio.file.*;
+import java.sql.*;
 import java.util.*;
 import java.util.regex.*;
 
 public class SqlToPojoGenerator {
-    
+
     private static final Map<String, String> SQL_TO_JAVA_TYPES = new HashMap<>();
 
     static {
-        SQL_TO_JAVA_TYPES.put("INT", "int");
-        SQL_TO_JAVA_TYPES.put("INTEGER", "int");
-        SQL_TO_JAVA_TYPES.put("BIGINT", "long");
-        SQL_TO_JAVA_TYPES.put("SMALLINT", "short");
-        SQL_TO_JAVA_TYPES.put("TINYINT", "byte");
-        SQL_TO_JAVA_TYPES.put("FLOAT", "float");
-        SQL_TO_JAVA_TYPES.put("DOUBLE", "double");
         SQL_TO_JAVA_TYPES.put("DECIMAL", "java.math.BigDecimal");
-        SQL_TO_JAVA_TYPES.put("NUMERIC", "java.math.BigDecimal");
         SQL_TO_JAVA_TYPES.put("CHAR", "String");
         SQL_TO_JAVA_TYPES.put("VARCHAR", "String");
-        SQL_TO_JAVA_TYPES.put("TEXT", "String");
-        SQL_TO_JAVA_TYPES.put("DATE", "java.sql.Date");
-        SQL_TO_JAVA_TYPES.put("TIME", "java.sql.Time");
+        SQL_TO_JAVA_TYPES.put("SMALLINT", "short");
+        SQL_TO_JAVA_TYPES.put("INTEGER", "int");
         SQL_TO_JAVA_TYPES.put("TIMESTAMP", "java.sql.Timestamp");
-        SQL_TO_JAVA_TYPES.put("BOOLEAN", "boolean");
     }
 
     public static void main(String[] args) throws IOException {
@@ -63,7 +54,7 @@ public class SqlToPojoGenerator {
 
     private static List<Column> parseColumns(String columnsPart) {
         List<Column> columns = new ArrayList<>();
-        Pattern columnPattern = Pattern.compile("(\\w+) (\\w+)");
+        Pattern columnPattern = Pattern.compile("(\\w+) (\\w+)(?:\\(\\d+(?:,\\d+)?\\))?(?: NOT NULL| DEFAULT [^,]+)?,?", Pattern.DOTALL);
         Matcher columnMatcher = columnPattern.matcher(columnsPart);
 
         while (columnMatcher.find()) {
@@ -81,6 +72,9 @@ public class SqlToPojoGenerator {
         String className = toCamelCase(table.getName(), true);
         File file = new File(className + ".java");
         try (PrintWriter writer = new PrintWriter(file)) {
+            writer.println("import java.sql.*;");
+            writer.println("import java.math.BigDecimal;");
+            writer.println();
             writer.println("public class " + className + " {");
 
             for (Column column : table.getColumns()) {
@@ -89,6 +83,7 @@ public class SqlToPojoGenerator {
 
             writer.println();
             generateGettersAndSetters(writer, table.getColumns());
+            generateFromResultSet(writer, table.getColumns(), className);
 
             writer.println("}");
         }
@@ -109,6 +104,51 @@ public class SqlToPojoGenerator {
             writer.println("    }");
 
             writer.println();
+        }
+    }
+
+    private static void generateFromResultSet(PrintWriter writer, List<Column> columns, String className) {
+        writer.println("    public static " + className + " fromResultSet(ResultSet rs) throws SQLException {");
+        writer.println("        " + className + " instance = new " + className + "();");
+
+        for (Column column : columns) {
+            String camelCaseName = toCamelCase(column.getName(), false);
+            String getterMethod = getResultSetGetterMethod(column.getType());
+            writer.println("        instance." + column.getName() + " = rs." + getterMethod + "(\"" + column.getName() + "\");");
+        }
+
+        writer.println("        return instance;");
+        writer.println("    }");
+    }
+
+    private static String getResultSetGetterMethod(String javaType) {
+        switch (javaType) {
+            case "int":
+                return "getInt";
+            case "long":
+                return "getLong";
+            case "short":
+                return "getShort";
+            case "byte":
+                return "getByte";
+            case "float":
+                return "getFloat";
+            case "double":
+                return "getDouble";
+            case "java.math.BigDecimal":
+                return "getBigDecimal";
+            case "String":
+                return "getString";
+            case "java.sql.Date":
+                return "getDate";
+            case "java.sql.Time":
+                return "getTime";
+            case "java.sql.Timestamp":
+                return "getTimestamp";
+            case "boolean":
+                return "getBoolean";
+            default:
+                return "getString";
         }
     }
 
