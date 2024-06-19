@@ -54,7 +54,7 @@ public class SqlToPojoGenerator {
 
     private static List<Column> parseColumns(String columnsPart) {
         List<Column> columns = new ArrayList<>();
-        Pattern columnPattern = Pattern.compile("(\\w+) (\\w+)(?:\\(\\d+(?:,\\d+)?\\))?(?: NOT NULL| DEFAULT [^,]+)?,?", Pattern.DOTALL);
+        Pattern columnPattern = Pattern.compile("(\\w+)\\s+(\\w+)(?:\\(\\d+(?:,\\d+)?\\))?(?:\\s+NOT NULL|\\s+DEFAULT [^,]+)?(?:,|$)", Pattern.DOTALL);
         Matcher columnMatcher = columnPattern.matcher(columnsPart);
 
         while (columnMatcher.find()) {
@@ -140,70 +140,69 @@ public class SqlToPojoGenerator {
                 return "getBigDecimal";
             case "String":
                 return "getString";
-                case "java.sql.Date":
-                    return "getDate";
-                case "java.sql.Time":
-                    return "getTime";
-                case "java.sql.Timestamp":
-                    return "getTimestamp";
-                case "boolean":
-                    return "getBoolean";
-                default:
-                    return "getString";
-            }
-        }
-    
-        private static String toCamelCase(String text, boolean capitalizeFirst) {
-            String[] parts = text.split("_");
-            StringBuilder camelCase = new StringBuilder();
-    
-            for (int i = 0; i < parts.length; i++) {
-                String part = parts[i].toLowerCase();
-    
-                if (i > 0 || capitalizeFirst) {
-                    part = part.substring(0, 1).toUpperCase() + part.substring(1);
-                }
-    
-                camelCase.append(part);
-            }
-    
-            return camelCase.toString();
-        }
-    
-        static class Table {
-            private final String name;
-            private final List<Column> columns;
-    
-            public Table(String name, List<Column> columns) {
-                this.name = name;
-                this.columns = columns;
-            }
-    
-            public String getName() {
-                return name;
-            }
-    
-            public List<Column> getColumns() {
-                return columns;
-            }
-        }
-    
-        static class Column {
-            private final String name;
-            private final String type;
-    
-            public Column(String name, String type) {
-                this.name = name;
-                this.type = type;
-            }
-    
-            public String getName() {
-                return name;
-            }
-    
-            public String getType() {
-                return type;
-            }
+            case "java.sql.Date":
+                return "getDate";
+            case "java.sql.Time":
+                return "getTime";
+            case "java.sql.Timestamp":
+                return "getTimestamp";
+            case "boolean":
+                return "getBoolean";
+            default:
+                return "getString";
         }
     }
-    
+
+    private static String toCamelCase(String text, boolean capitalizeFirst) {
+        String[] parts = text.split("_");
+        StringBuilder camelCase = new StringBuilder();
+
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i].toLowerCase();
+
+            if (i > 0 || capitalizeFirst) {
+                part = part.substring(0, 1).toUpperCase() + part.substring(1);
+            }
+
+            camelCase.append(part);
+        }
+
+        return camelCase.toString();
+    }
+
+    static class Table {
+        private final String name;
+        private final List<Column> columns;
+
+        public Table(String name, List<Column> columns) {
+            this.name = name;
+            this.columns = columns;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public List<Column> getColumns() {
+            return columns;
+        }
+    }
+
+    static class Column {
+        private final String name;
+        private final String type;
+
+        public Column(String name, String type) {
+            this.name = name;
+            this.type = type;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getType() {
+            return type;
+        }
+    }
+}
