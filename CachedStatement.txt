@@ -1,0 +1,8 @@
+   Properties props = new Properties();
+        props.setProperty("user", "username");
+        props.setProperty("password", "password");
+
+        // Enable PreparedStatement cache
+        props.setProperty("cachePrepStmts", "true");
+        props.setProperty("prepStmtCacheSize", "250");
+        props.setProperty("prepStmtCacheSqlLimit", "2048");
