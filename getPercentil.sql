@@ -1,12 +1,13 @@
--- 对表进行过滤，然后计算每个 tax_return_type 的百分位数
+-- 定义过滤子查询
 WITH filtered_data AS (
     SELECT *
     FROM your_table_name
-    WHERE <your_filter_conditions> -- 在这里加入你的过滤条件
+    WHERE <your_filter_conditions>
 ),
-percentiles AS (
+
+-- 计算 'A' 类型的百分位数
+percentiles_A AS (
     SELECT
-        tax_return_type,
         PERCENTILE_CONT(0.1) WITHIN GROUP (ORDER BY doc_length) AS p10,
         PERCENTILE_CONT(0.2) WITHIN GROUP (ORDER BY doc_length) AS p20,
         PERCENTILE_CONT(0.3) WITHIN GROUP (ORDER BY doc_length) AS p30,
@@ -17,10 +18,12 @@ percentiles AS (
         PERCENTILE_CONT(0.8) WITHIN GROUP (ORDER BY doc_length) AS p80,
         PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY doc_length) AS p90
     FROM filtered_data
+    WHERE tax_return_type = 'A'
     GROUP BY tax_return_type
 )
+
 SELECT
-    f.tax_return_type,
+    'A' AS tax_return_type,
     CASE
         WHEN f.doc_length <= p.p10 THEN '0-' || CAST(p.p10 AS VARCHAR(10))
         WHEN f.doc_length <= p.p20 THEN CAST(p.p10 AS VARCHAR(10)) || '-' || CAST(p.p20 AS VARCHAR(10))
@@ -34,11 +37,10 @@ SELECT
         ELSE CAST(p.p90 AS VARCHAR(10)) || '+'
     END AS length_range,
     COUNT(*) AS count,
-    DECIMAL((COUNT(*) * 100.0) / (SELECT COUNT(*) FROM filtered_data WHERE tax_return_type = f.tax_return_type), 5, 2) AS percentage
+    DECIMAL((COUNT(*) * 100.0) / (SELECT COUNT(*) FROM filtered_data WHERE tax_return_type = 'A'), 5, 2) AS percentage
 FROM filtered_data f
-JOIN percentiles p ON f.tax_return_type = p.tax_return_type
+JOIN percentiles_A p ON f.tax_return_type = 'A'
 GROUP BY
-    f.tax_return_type,
     CASE
         WHEN f.doc_length <= p.p10 THEN '0-' || CAST(p.p10 AS VARCHAR(10))
         WHEN f.doc_length <= p.p20 THEN CAST(p.p10 AS VARCHAR(10)) || '-' || CAST(p.p20 AS VARCHAR(10))
@@ -51,4 +53,4 @@ GROUP BY
         WHEN f.doc_length <= p.p90 THEN CAST(p.p80 AS VARCHAR(10)) || '-' || CAST(p.p90 AS VARCHAR(10))
         ELSE CAST(p.p90 AS VARCHAR(10)) || '+'
     END
-ORDER BY f.tax_return_type, length_range;
+ORDER BY length_range;
