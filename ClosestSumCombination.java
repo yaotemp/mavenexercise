@@ -5,7 +5,7 @@ public class ClosestSumCombination {
     public static List<String> findClosestCombination(Map<String, Integer> dictionary, int target) {
         int maxValue = target + Collections.max(dictionary.values());
 
-        // dp[i]表示到达和i所需的最少字典项数
+        // dp[i] represents the minimum number of dictionary items needed to reach sum i
         int[] dp = new int[maxValue + 1];
         Arrays.fill(dp, Integer.MAX_VALUE);
         dp[0] = 0;
@@ -13,11 +13,11 @@ public class ClosestSumCombination {
         List<String>[] combination = new List[maxValue + 1];
         combination[0] = new ArrayList<>();
 
-        // 遍历所有可能的和从 1 到最大值
+        // Iterate over all possible sums from 1 to maxValue
         for (int i = 1; i <= maxValue; i++) {
             combination[i] = new ArrayList<>();
 
-            // 检查每个字典项
+            // Check each dictionary item
             for (Map.Entry<String, Integer> entry : dictionary.entrySet()) {
                 String key = entry.getKey();
                 int value = entry.getValue();
@@ -25,7 +25,7 @@ public class ClosestSumCombination {
                 if (value <= i && dp[i - value] != Integer.MAX_VALUE) {
                     int newCount = dp[i - value] + 1;
 
-                    // 更新 dp[i] 和 combination[i] 为更优的情况
+                    // If the new combination has fewer items, update dp[i] and combination[i]
                     if (newCount < dp[i]) {
                         dp[i] = newCount;
                         combination[i] = new ArrayList<>(combination[i - value]);
@@ -35,14 +35,14 @@ public class ClosestSumCombination {
             }
         }
 
-        // 从目标值开始，往下找到最接近目标值且使用字典项最少的组合
+        // Start from the target value and find the closest combination with the fewest items
         for (int i = target; i >= 0; i--) {
             if (!combination[i].isEmpty()) {
                 return combination[i];
             }
         }
 
-        return new ArrayList<>();  // 如果找不到任何组合返回空列表
+        return new ArrayList<>();  // Return an empty list if no combination is found
     }
 
     public static void main(String[] args) {
@@ -51,7 +51,7 @@ public class ClosestSumCombination {
         dictionary.put("b", 4000);
         dictionary.put("c", 8000);
 
-        int target = 50000;
-        System.out.println("最接近 " + target + " 的组合是: " + findClosestCombination(dictionary, target));
+        int target = 28500;
+        System.out.println("Closest combination to " + target + " is: " + findClosestCombination(dictionary, target));
     }
 }
