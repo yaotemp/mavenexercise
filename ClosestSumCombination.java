@@ -2,54 +2,44 @@ import java.util.*;
 
 public class ClosestSumCombination {
 
-    public static List<String> findClosestCombination(Map<String, Long> dictionary, long target) {
-        long sumAllValues = dictionary.values().stream().mapToLong(Long::longValue).sum();
-        long maxValue = Math.min(target + sumAllValues, target + 10000);  // Adjust the range as needed
+    public static List<String> findGreedyCombination(Map<String, Long> dictionary, long target) {
+        // Convert dictionary entries to a list and sort by value in descending order
+        List<Map.Entry<String, Long>> sortedEntries = new ArrayList<>(dictionary.entrySet());
+        sortedEntries.sort((a, b) -> Long.compare(a.getValue(), b.getValue()));  // Sort by value in descending order
 
-        Map<Long, Long> dp = new HashMap<>();
-        dp.put(0L, 0L);
+        List<String> combination = new ArrayList<>();
+        long currentSum = 0;
 
-        Map<Long, List<String>> combination = new HashMap<>();
-        combination.put(0L, new ArrayList<>());
+        // Start adding from the largest possible value less than or equal to the target
+        for (int i = sortedEntries.size() - 1; i >= 0; i--) {
+            Map.Entry<String, Long> entry = sortedEntries.get(i);
+            String key = entry.getKey();
+            long value = entry.getValue();
 
-        for (long i = 1; i <= maxValue; i++) {
-            List<String> bestCombination = null;
-            long bestCount = Long.MAX_VALUE;
-
-            for (Map.Entry<String, Long> entry : dictionary.entrySet()) {
-                String key = entry.getKey();
-                long value = entry.getValue();
-
-                if (value <= i && dp.containsKey(i - value)) {
-                    long newCount = dp.get(i - value) + 1;
-
-                    if (newCount < bestCount) {
-                        bestCount = newCount;
-                        bestCombination = new ArrayList<>(combination.get(i - value));
-                        bestCombination.add(key);
-                    }
-                }
+            // Add the value as many times as possible without exceeding the target
+            while (currentSum + value <= target) {
+                currentSum += value;
+                combination.add(key);
             }
 
-            if (bestCombination != null) {
-                dp.put(i, bestCount);
-                combination.put(i, bestCombination);
-
-                // If we found an exact match, we can stop early
-                if (i == target) {
-                    return bestCombination;
-                }
+            // If we've reached the target, stop
+            if (currentSum == target) {
+                return combination;
             }
         }
 
-        // Finding the closest combination to the target upwards
-        for (long i = target; i <= maxValue; i++) {
-            if (combination.containsKey(i)) {
-                return combination.get(i);
-            }
+        // Final adjustment step: check if adding one more of the smallest value exceeds the target but is closer
+        Map.Entry<String, Long> smallestEntry = sortedEntries.get(0); // The smallest value entry
+        String smallestKey = smallestEntry.getKey();
+        long smallestValue = smallestEntry.getValue();
+
+        // Check if adding one more smallest value makes the sum closer to the target, even if it exceeds the target
+        if (Math.abs(target - (currentSum + smallestValue)) < Math.abs(target - currentSum)) {
+            currentSum += smallestValue;
+            combination.add(smallestKey);
         }
 
-        return new ArrayList<>();
+        return combination;
     }
 
     public static void main(String[] args) {
@@ -63,7 +53,7 @@ public class ClosestSumCombination {
         dictionary.put("g", 221180L);
         dictionary.put("h", 62139609L);
 
-        long target = 21000L;
-        System.out.println("Closest combination to " + target + " is: " + findClosestCombination(dictionary, target));
+        long target = 24500L; // Change target to any desired value
+        System.out.println("Greedy combination to " + target + " is: " + findGreedyCombination(dictionary, target));
     }
 }
