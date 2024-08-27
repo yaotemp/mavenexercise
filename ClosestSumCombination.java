@@ -80,8 +80,8 @@ public class ClosestSumCombination {
         dictionary.put("g", 221180L);
         dictionary.put("h", 62139609L);
 
-        long target = 62139609L; // Change target to any desired value
-        int att_num = 1; // Change the number of attachments to any desired value
+        long target = 11000l; // Change target to any desired value
+        int att_num = 3; // Change the number of attachments to any desired value
 
         List<String> result = findCombination(dictionary, target, att_num);
         System.out.println("Combination to achieve target " + target + " with " + att_num + " attachments is: " + result);
