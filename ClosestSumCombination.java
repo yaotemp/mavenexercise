@@ -2,10 +2,10 @@ import java.util.*;
 
 public class ClosestSumCombination {
 
-    public static List<String> findGreedyCombination(Map<String, Long> dictionary, long target) {
+    public static List<String> findGreedyCombination(Map<String, Long> dictionary, long targetLength) {
         // Convert dictionary entries to a list and sort by value in descending order
         List<Map.Entry<String, Long>> sortedEntries = new ArrayList<>(dictionary.entrySet());
-        sortedEntries.sort((a, b) -> Long.compare(a.getValue(), b.getValue()));  // Sort by value in descending order
+        sortedEntries.sort((a, b) -> Long.compare(a.getValue(), b.getValue()));
 
         List<String> combination = new ArrayList<>();
         long currentSum = 0;
@@ -17,29 +17,56 @@ public class ClosestSumCombination {
             long value = entry.getValue();
 
             // Add the value as many times as possible without exceeding the target
-            while (currentSum + value <= target) {
+            while (currentSum + value <= targetLength) {
                 currentSum += value;
                 combination.add(key);
             }
 
             // If we've reached the target, stop
-            if (currentSum == target) {
+            if (currentSum == targetLength) {
                 return combination;
             }
         }
 
-        // Final adjustment step: check if adding one more of the smallest value exceeds the target but is closer
-        Map.Entry<String, Long> smallestEntry = sortedEntries.get(0); // The smallest value entry
-        String smallestKey = smallestEntry.getKey();
-        long smallestValue = smallestEntry.getValue();
-
-        // Check if adding one more smallest value makes the sum closer to the target, even if it exceeds the target
-        if (Math.abs(target - (currentSum + smallestValue)) < Math.abs(target - currentSum)) {
-            currentSum += smallestValue;
-            combination.add(smallestKey);
-        }
+       
 
         return combination;
+    }
+
+    public static List<String> findCombination(Map<String, Long> dictionary, long att_length, int att_num) {
+        // Calculate average attachment length
+        long average_att_length = att_length / att_num;
+
+        // Find greedy combination for the average attachment length
+        List<String> averageCombination = findGreedyCombination(dictionary, average_att_length);
+
+        // Calculate the remaining length after (att_num - 1) combinations
+        long remainingLength = att_length - (calculateCombinationLength(dictionary, averageCombination) * (att_num - 1));
+
+        // Find greedy combination for the remaining length
+        List<String> remainingCombination = findGreedyCombination(dictionary, remainingLength);
+
+        // Combine the results
+        List<String> finalCombination = new ArrayList<>();
+
+        // Add the average combination (att_num - 1) times
+        for (int i = 0; i < att_num - 1; i++) {
+            finalCombination.addAll(averageCombination);
+        }
+
+        // Add the remaining combination
+        finalCombination.addAll(remainingCombination);
+
+        return finalCombination;
+    }
+
+    // Helper method to calculate the total length of a combination
+    private static long calculateCombinationLength(Map<String, Long> dictionary, List<String> combination) {
+        long totalLength = 0;
+        for (String key : combination) {
+            totalLength += dictionary.get(key);
+        }
+        return totalLength;
     }
 
     public static void main(String[] args) {
@@ -53,7 +80,10 @@ public class ClosestSumCombination {
         dictionary.put("g", 221180L);
         dictionary.put("h", 62139609L);
 
-        long target = 24500L; // Change target to any desired value
-        System.out.println("Greedy combination to " + target + " is: " + findGreedyCombination(dictionary, target));
+        long target = 62139609L; // Change target to any desired value
+        int att_num = 1; // Change the number of attachments to any desired value
+
+        List<String> result = findCombination(dictionary, target, att_num);
+        System.out.println("Combination to achieve target " + target + " with " + att_num + " attachments is: " + result);
     }
 }
