@@ -25,11 +25,15 @@ public class DatasetInfoByPrefix {
                 if (entry.isDatasetEntry()) {  // Check if the entry is a dataset
                     datasetCount++;
                     
-                    // Retrieve dataset name (ENTNAME) and volume serial number (VOLSER)
+                    // Retrieve dataset name (ENTNAME)
                     String dsn = entry.getField("ENTNAME").getFString().trim();
-                    String volser = entry.getField("VOLSER").getFString().trim();
 
-                    if (volser == null || volser.isEmpty()) {
+                    // Check if the VOLSER field is present
+                    CatalogSearchField volserField = entry.getField("VOLSER");
+                    String volser = null;
+                    if (volserField != null && volserField.getFString() != null) {
+                        volser = volserField.getFString().trim();
+                    } else {
                         writer.println("Dataset: " + dsn + " has no VOLSER");
                         continue;  // Skip datasets without a volume serial number
                     }
