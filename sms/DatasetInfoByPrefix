@@ -1,4 +1,3 @@
-import java.io.PrintWriter;
 import com.ibm.jzos.CatalogSearch;
 import com.ibm.jzos.CatalogSearchField;
 import com.ibm.jzos.Format1DSCB;
@@ -8,7 +7,6 @@ import com.ibm.jzos.ZFile;
 public class DatasetInfoByPrefix {
     public static void main(String[] args) {
         String filterKey = "merf*";  // Prefix for dataset names
-        PrintWriter writer = new PrintWriter(System.out);
 
         try {
             // Initialize CatalogSearch with filter key and buffer size
@@ -34,7 +32,7 @@ public class DatasetInfoByPrefix {
                     if (volserField != null && volserField.getFString() != null) {
                         volser = volserField.getFString().trim();
                     } else {
-                        writer.println("Dataset: " + dsn + " has no VOLSER");
+                        System.out.println("Dataset: " + dsn + " has no VOLSER");
                         continue;  // Skip datasets without a volume serial number
                     }
 
@@ -43,17 +41,17 @@ public class DatasetInfoByPrefix {
                     // Retrieve Format 1 DSCB information
                     try {
                         Format1DSCB dscb = ZFile.obtainDSN(qdsn, volser);
-                        writer.println("Dataset: " + dsn + " on VOLSER: " + volser);
-                        writer.println("LRECL=" + dscb.getDS1LRECL());
-                        writer.println("BLKSIZE=" + dscb.getDS1BLKL());
-                        writer.println("RECFM=" + dscb.getDS1RECFM());
-                        writer.println("Allocated Space in KB=" + dscb.getAllocatedSpaceK());
+                        System.out.println("Dataset: " + dsn + " on VOLSER: " + volser);
+                        System.out.println("LRECL=" + dscb.getDS1LRECL());
+                        System.out.println("BLKSIZE=" + dscb.getDS1BLKL());
+                        System.out.println("RECFM=" + dscb.getDS1RECFM());
+                        System.out.println("Allocated Space in KB=" + dscb.getAllocatedSpaceK());
                     } catch (RcException rce) {
                         // Handle exceptions specific to the volume and dataset status
                         if (rce.getRc() == 4) {
-                            writer.println("Volume not mounted for dataset: " + dsn);
+                            System.out.println("Volume not mounted for dataset: " + dsn);
                         } else if (rce.getRc() == 8) {
-                            writer.println("Volume does not contain a Format 1 DSCB for dataset: " + dsn);
+                            System.out.println("Volume does not contain a Format 1 DSCB for dataset: " + dsn);
                         } else {
                             rce.printStackTrace();
                         }
@@ -61,8 +59,7 @@ public class DatasetInfoByPrefix {
                 }
             }
 
-            writer.println("Total datasets matched with prefix " + filterKey + ": " + datasetCount);
-            writer.flush();
+            System.out.println("Total datasets matched with prefix " + filterKey + ": " + datasetCount);
 
         } catch (RcException e) {
             e.printStackTrace();  // Handle CatalogSearch-related exceptions
