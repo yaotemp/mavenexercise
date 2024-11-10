@@ -1,0 +1,6 @@
+/* jobStatus REXX script */
+parse arg jobname jobid
+if jobid <> '' then
+    jobname = jobname'('jobid')'
+address tso "STATUS" jobname
+exit 0

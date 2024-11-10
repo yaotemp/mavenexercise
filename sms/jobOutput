@@ -1,0 +1,11 @@
+/* jobOutput REXX script */
+/* Retrieves SYSOUT data for a specified job name and job ID */
+
+parse arg jobname jobid  /* Parse input arguments for job name and job ID */
+
+if jobid <> '' then
+    jobname = jobname'('jobid')'  /* Format job name with job ID if provided */
+
+address tso "OUTPUT " jobname  /* Execute OUTPUT command to fetch SYSOUT */
+
+exit 0  /* Exit with success code */
