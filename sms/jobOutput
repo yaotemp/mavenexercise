@@ -8,4 +8,9 @@ if jobid <> '' then
 
 address tso "OUTPUT " jobname  /* Execute OUTPUT command to fetch SYSOUT */
 
-exit 0  /* Exit with success code */
+if rc <> 0 then do
+    say "No SYSOUT data available for job " jobname
+    exit 1
+end
+
+exit 0  /* Exit with success code if SYSOUT data is retrieved */
