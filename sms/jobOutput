@@ -6,11 +6,24 @@ parse arg jobname jobid  /* Parse input arguments for job name and job ID */
 if jobid <> '' then
     jobname = jobname'('jobid')'  /* Format job name with job ID if provided */
 
-address tso "OUTPUT " jobname  /* Execute OUTPUT command to fetch SYSOUT */
+address tso
+"SUBCOM OUTPUT"  /* Check if OUTPUT subcommand is available */
+if rc <> 0 then do
+    say "OUTPUT command is not available in this environment."
+    exit 1
+end
+
+address tso "OUTPUT " jobname "PRINT(*)"  /* Execute OUTPUT command to fetch SYSOUT */
 
 if rc <> 0 then do
     say "No SYSOUT data available for job " jobname
     exit 1
+end
+
+/* Read and display the SYSOUT data */
+do while queued() > 0
+    parse pull line
+    say line
 end
 
 exit 0  /* Exit with success code if SYSOUT data is retrieved */
