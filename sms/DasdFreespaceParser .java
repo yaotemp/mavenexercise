@@ -2,22 +2,58 @@ package sms;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class DasdFreespaceParser {
 
+    // Class to store specific parsed information from the report description
+    public static class ReportInfo {
+        private String date;
+        private String time;
+        private int matchedVolumes;
+        private double freePercentage;
+        private long freeTracks;
+
+        public ReportInfo(String date, String time, int matchedVolumes, double freePercentage, long freeTracks) {
+            this.date = date;
+            this.time = time;
+            this.matchedVolumes = matchedVolumes;
+            this.freePercentage = freePercentage;
+            this.freeTracks = freeTracks;
+        }
+
+        @Override
+        public String toString() {
+            return "ReportInfo{" +
+                    "date='" + date + '\'' +
+                    ", time='" + time + '\'' +
+                    ", matchedVolumes=" + matchedVolumes +
+                    ", freePercentage=" + freePercentage +
+                    ", freeTracks=" + freeTracks +
+                    '}';
+        }
+    }
+
     public static class ParsedReport {
         private String reportDescription;
+        private ReportInfo reportInfo;
         private String columnHeader;
         private List<DasdFreespaceRecord> records;
 
-        public ParsedReport(String reportDescription, String columnHeader, List<DasdFreespaceRecord> records) {
+        public ParsedReport(String reportDescription, ReportInfo reportInfo, String columnHeader, List<DasdFreespaceRecord> records) {
             this.reportDescription = reportDescription;
+            this.reportInfo = reportInfo;
             this.columnHeader = columnHeader;
             this.records = records;
         }
 
         public String getReportDescription() {
             return reportDescription;
+        }
+
+        public ReportInfo getReportInfo() {
+            return reportInfo;
         }
 
         public String getColumnHeader() {
@@ -31,6 +67,7 @@ public class DasdFreespaceParser {
         @Override
         public String toString() {
             return "Report Description:\n" + reportDescription + "\n\n" +
+                    "Parsed Report Info:\n" + reportInfo + "\n\n" +
                     "Column Header:\n" + columnHeader + "\n\n" +
                     "Records:\n" + records;
         }
@@ -45,39 +82,39 @@ public class DasdFreespaceParser {
         boolean isDataSection = false;
 
         for (String line : reportLines) {
-            // 检查是否到达“Bottom of List”行，停止解析
+            // Stop parsing if we reach "Bottom of List"
             if (line.contains("Bottom of List")) {
                 break;
             }
 
-            // 检查是否到达标题行
+            // Check if we reached the title line indicating the start of the column header
             if (isHeaderSection && line.contains("Volume") && line.contains("Mount")) {
-                isHeaderSection = false; // 报告说明部分结束，进入标题行
+                isHeaderSection = false; // End of report description, move to column header
             }
 
-            // 保存报告说明部分
+            // Save report description lines
             if (isHeaderSection) {
                 reportDescription.append(line).append("\n");
                 continue;
             }
 
-            // 检测分隔行“------”，之后进入数据部分
+            // Detect the separator line "------" and start parsing data after it
             if (line.startsWith("------")) {
                 isDataSection = true;
-                continue; // 跳过分隔行
+                continue; // Skip the separator line
             }
 
-            // 保存标题行内容，包括列标题和分隔行
+            // Save column header content
             if (!isDataSection) {
                 columnHeader.append(line).append("\n");
                 continue;
             }
 
-            // 分割数据行，根据空格拆分各个字段
+            // Split data rows into columns
             String[] columns = line.trim().split("\\s+");
-            if (columns.length < 21) continue; // 确保有至少21列数据
+            if (columns.length < 21) continue; // Ensure there are at least 21 columns
 
-            // 解析每一列，并创建一个新的记录对象
+            // Parse each column into a record object
             DasdFreespaceRecord record = new DasdFreespaceRecord();
             record.setVolumeSerial(columns[0]);
             record.setMountAttr(columns[1]);
@@ -101,15 +138,55 @@ public class DasdFreespaceParser {
             record.setAllocCntr(columns[19]);
             record.setFcDsFlag(columns[20]);
 
-            // 将记录添加到结果列表
+            // Add the record to the result list
             records.add(record);
         }
 
-        return new ParsedReport(reportDescription.toString(), columnHeader.toString(), records);
+        // Parse report description to extract specific information
+        ReportInfo reportInfo = parseReportInfo(reportDescription.toString());
+
+        return new ParsedReport(reportDescription.toString(), reportInfo, columnHeader.toString(), records);
+    }
+
+    private static ReportInfo parseReportInfo(String description) {
+        String date = "";
+        String time = "";
+        int matchedVolumes = 0;
+        double freePercentage = 0.0;
+        long freeTracks = 0;
+
+        // Regular expressions to match the report information
+        Pattern dateTimePattern = Pattern.compile("(\\d{2}/\\d{2}/\\d{4})\\s+\\*\\*.*\\*\\*\\s+(\\d{2}:\\d{2}:\\d{2})");
+        Pattern matchedVolumesPattern = Pattern.compile("(\\d+) volumes matched");
+        Pattern freePercentagePattern = Pattern.compile("% Free:\\s+(\\d+\\.\\d+)");
+        Pattern freeTracksPattern = Pattern.compile("Free Tracks:\\s+([\\d,]+)");
+
+        Matcher matcher = dateTimePattern.matcher(description);
+        if (matcher.find()) {
+            date = matcher.group(1);
+            time = matcher.group(2);
+        }
+
+        matcher = matchedVolumesPattern.matcher(description);
+        if (matcher.find()) {
+            matchedVolumes = Integer.parseInt(matcher.group(1));
+        }
+
+        matcher = freePercentagePattern.matcher(description);
+        if (matcher.find()) {
+            freePercentage = Double.parseDouble(matcher.group(1));
+        }
+
+        matcher = freeTracksPattern.matcher(description);
+        if (matcher.find()) {
+            freeTracks = Long.parseLong(matcher.group(1).replace(",", ""));
+        }
+
+        return new ReportInfo(date, time, matchedVolumes, freePercentage, freeTracks);
     }
 
     public static void main(String[] args) {
-        // 示例输入数据（通常您可以从文件中读取此数据）
+        // Example input data (normally you would read this from a file)
         List<String> reportLines = List.of(
             "11/10/2024 ** MVS/QuickRef, Copyright 1989-2023, Chicago Soft, Ltd.** 15:23:11",
             "2008 volumes matched MEF* - % Free: 8.7 - Free Tracks: 256,826,656",
@@ -124,11 +201,10 @@ public class DasdFreespaceParser {
             "Bottom of List"
         );
 
-        // 解析报告
+        // Parse the report
         ParsedReport report = parseDasdFreespaceReport(reportLines);
 
-        // 打印报告说明、标题行和数据记录
+        // Print report description, parsed info, column header, and data records
         System.out.println(report);
     }
 }
-
