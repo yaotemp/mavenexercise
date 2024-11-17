@@ -72,7 +72,15 @@ public class DasdFreespaceParser {
                     "Records:\n" + records;
         }
     }
-
+    public static List<DasdFreespaceRecord> sortRecordsWithStream(List<DasdFreespaceRecord> records) {
+        // Using Streams to sort by multiple fields: volumeSerial, freeTracks (descending), freeCyls
+        return records.stream()
+                .sorted(Comparator
+                        .comparing(DasdFreespaceRecord::getVolumeSerial)
+                        .thenComparing(Comparator.comparingInt(DasdFreespaceRecord::getFreeTracks).reversed()) // Descending
+                        .thenComparing(Comparator.comparingInt(DasdFreespaceRecord::getFreeCyls))) // Ascending
+                .collect(Collectors.toList());
+    }
     public static ParsedReport parseDasdFreespaceReport(List<String> reportLines) {
         StringBuilder reportDescription = new StringBuilder();
         StringBuilder columnHeader = new StringBuilder();
