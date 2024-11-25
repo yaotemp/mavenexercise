@@ -1,4 +1,5 @@
-/* REXX script named GETSYSSECONDS */
+/* Enable TRACE to show the execution process and return codes */
+TRACE R  /* Enable tracing */
 
 /* Parse argument to get the dataset name */
 PARSE ARG datasetName
@@ -9,16 +10,25 @@ IF datasetName = "" THEN DO
     EXIT(-1)  /* Exit with an error code of -1 if no dataset name is given */
 END
 
-/* Call LISTDSI function to retrieve dataset information */
-X = LISTDSI("'"datasetName"'")
+SAY 'Dataset name provided: ' datasetName  /* Debug: Output the dataset name */
 
-/* Check the return code of LISTDSI function */
-IF X = 0 THEN DO
-    /* If LISTDSI is successful, return the secondary allocation size (SYSSECONDS) */
-    RETURN SYSSECONDS
+/* Use ADDRESS TSO to call LISTDSI */
+ADDRESS TSO "LISTDSI '"datasetName"'"
+
+/* Debug: Output the return code from LISTDSI */
+SAY 'Return code from LISTDSI is: ' RC
+
+/* Turn off TRACE after debugging steps */
+TRACE O  /* Turn off tracing */
+
+/* Check if LISTDSI was successful */
+IF RC = 0 THEN DO
+    /* Debug: Output system variable SYSSECONDS */
+    SAY 'SYSSECONDS value is: ' SYSSECONDS
+    RETURN SYSSECONDS  /* Return SYSSECONDS value if successful */
 END
 ELSE DO
-    /* If LISTDSI fails, display an error message and return -1 */
-    SAY 'Error: Failed to retrieve information for dataset ' datasetName
-    RETURN -1
+    /* Debug: Output error message when LISTDSI fails */
+    SAY 'Error: LISTDSI failed for dataset ' datasetName
+    RETURN -1  /* Return -1 to indicate an error */
 END
