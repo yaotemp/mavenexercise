@@ -1,47 +1,38 @@
-/* REXX script to get dataset information using DSINFO */
+/* REXX: Get dataset details and parse secondary allocation information */
+parse arg dataset_name
 
-/* Parse argument to get the dataset name */
-PARSE ARG datasetName
+/* Check if the user provided a dataset name */
+if dataset_name = '' then do
+  say 'Please provide a dataset name as an argument.'
+  exit 1
+end
 
-/* Check if the dataset name is provided */
-IF datasetName = "" THEN DO
-    SAY 'Error: Dataset name must be provided.'
-    EXIT(-1)  /* Exit with an error code of -1 if no dataset name is given */
-END
+/* Allocate output dataset to capture LISTCAT output */
+address TSO "ALLOCATE FILE(SYSPRINT) SYSOUT(*)"
 
-/* Initialize ISPF environment */
-ADDRESS ISPEXEC "CONTROL ERRORS RETURN"  /* ISPF Error handling */
+/* Invoke IDCAMS LISTCAT ENT command */
+address TSO "CALL *(IDCAMS)"
+address TSO "LISTCAT ENT('"dataset_name"') ALL"
 
-/* Allocate a new variable pool to store dataset information */
-ADDRESS ISPEXEC "LMINIT DATAID(DID) DSNAME('"datasetName"')" 
-IF RC <> 0 THEN DO
-    SAY 'Error: Failed to initialize the dataset information for ' datasetName
-    EXIT(RC)
-END
+/* Read SYSPRINT file contents */
+lines = ''
+address TSO "EXECIO * DISKR SYSPRINT (STEM result. FINIS"
 
-/* Call the DSINFO service to get dataset information */
-ADDRESS ISPEXEC "DSINFO DATAID("DID")" 
+/* Release the SYSPRINT file */
+address TSO "FREE FILE(SYSPRINT)"
 
-/* Check if DSINFO succeeded */
-IF RC = 0 THEN DO
-    /* Print dataset information */
-    SAY "Dataset Name: " datasetName
-    SAY "Volume Serial: " SYSVOL  /* Volume Serial Number */
-    SAY "Dataset Organization: " SYSDORG
-    SAY "Record Format: " SYSRECFM
-    SAY "Logical Record Length: " SYSLRECL
-    SAY "Block Size: " SYSBLKSIZE
-    SAY "Allocated Tracks: " SYSALLOC
-    SAY "Used Tracks: " SYSUSED
-    SAY "Number of Extents: " SYSEXT
-    SAY "Creation Date: " SYSCREAT
-    SAY "Expiration Date: " SYSEXPD
-END
-ELSE DO
-    SAY 'Error: DSINFO failed for dataset' datasetName ', RC=' RC
-    EXIT(-1)
-END
+/* Parse IDCAMS output to find Secondary Allocation information */
+found = 0
+do i = 1 to result.0
+  if pos('SECEXT', strip(result.i)) > 0 then do
+    say 'Secondary Allocation (SECEXT):' result.i
+    found = 1
+    leave
+  end
+end
 
-/* Free the dataset information */
-ADDRESS ISPEXEC "LMFREE DATAID("DID")"
-EXIT 0
+/* If secondary allocation information was not found */
+if found = 0 then
+  say 'Unable to find Secondary Allocation information.'
+
+exit 0
