@@ -8,15 +8,30 @@ if dataset_name = '' then do
 end
 
 /* Allocate output dataset to capture LISTCAT output */
-address TSO "ALLOCATE FILE(SYSPRINT) SYSOUT(*)"
+address TSO "ALLOCATE FILE(SYSPRINT) SYSOUT(*) RC(ALLOC_RC)"
+
+/* Check if allocation was successful */
+if ALLOC_RC <> 0 then do
+  say 'Failed to allocate SYSPRINT. Please check your allocation settings.'
+  exit 1
+end
 
 /* Invoke IDCAMS LISTCAT ENT command */
 address TSO "CALL *(IDCAMS)"
 address TSO "LISTCAT ENT('"dataset_name"') ALL"
 
+/* Set default value for result.0 */
+result.0 = 0
+
 /* Read SYSPRINT file contents */
-lines = ''
-address TSO "EXECIO * DISKR SYSPRINT (STEM result. FINIS"
+address TSO "EXECIO * DISKR SYSPRINT (STEM result. FINIS RC(EXECIO_RC)"
+
+/* Check if EXECIO was successful */
+if EXECIO_RC <> 0 then do
+  say 'Failed to read SYSPRINT output. Please check your dataset and commands.'
+  address TSO "FREE FILE(SYSPRINT)"
+  exit 1
+end
 
 /* Release the SYSPRINT file */
 address TSO "FREE FILE(SYSPRINT)"
