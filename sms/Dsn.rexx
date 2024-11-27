@@ -1,9 +1,9 @@
-/* REXX: Get KEYLEN value for a dataset passed as a parameter */
-parse arg dataset_name
+/* REXX: Get KEYLEN value for a dataset passed as a parameter and store it in an output dataset */
+parse arg dataset_name output_dataset_name
 
-/* Check if the user provided a dataset name */
-if dataset_name = '' then do
-    say 'Please provide a dataset name as an argument.'
+/* Check if the user provided a dataset name and output dataset */
+if dataset_name = '' | output_dataset_name = '' then do
+    say 'Please provide both the dataset name and the output dataset name as arguments.'
     exit 1
 end
 
@@ -44,8 +44,23 @@ Do I = 1 To Output.0 Until Keylen ¬= ""
     End
 End
 
-/* If KEYLEN is found, return the numeric value */
-If Keylen = "" Then
+/* Allocate output dataset for writing the key length */
+If Keylen = "" Then Do
+    Say "Unable to find KEYLEN in the LISTCAT output."
     Exit 1  /* Exit with an error code if no valid key length found */
-Else
-    Return Keylen  /* Return the numeric key length */
+End
+
+/* Allocate the output dataset */
+Address TSO "ALLOCATE DATASET('"output_dataset_name"') WRITE REUSE"
+
+/* Write the key length to the dataset */
+outputData.1 = Keylen
+outputData.0 = 1
+Address TSO "EXECIO 1 DISKW "output_dataset_name" (STEM outputData. FINIS"
+
+/* Free the output dataset */
+Address TSO "FREE DATASET('"output_dataset_name"')"
+
+Say "The key length (KEYLEN) has been written to the dataset:" output_dataset_name
+
+Exit 0  /* Exit successfully */
