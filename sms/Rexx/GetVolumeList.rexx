@@ -38,41 +38,36 @@ call ispexec "LMDFREE LISTID(&LID)"
 
 exit 0
 
-/* Function to Get Volumes for a Dataset */
+/* Function to Get Volumes for a Dataset Using OUTTRAP */
 getVolumes: procedure
     parse arg datasetName
     volserList = ""
 
-    /* Allocate a temporary file to hold LISTCAT output */
-    ddname = "LISTCATOUT"
-    address TSO "ALLOCATE FILE("ddname") NEW REUSE LRECL(255) TRACKS SPACE(5,5) UNIT(SYSDA)"
+    /* Use OUTTRAP to capture LISTCAT output into a stem variable */
+    call outtrap 'OUT.'
+    address TSO "LISTCAT ENT("datasetName") ALL"
+    call outtrap 'OFF'
 
-    /* Run LISTCAT command and direct output to the allocated DDNAME */
-    address TSO "SUBCOM IDCAMS"
-    if RC <> 0 then address TSO "SUBCOM IDCAMS LOAD"  /* Ensure IDCAMS is loaded */
-    address IDCAMS "LISTCAT ENT("datasetName") ALL -",
-                   "OUTFILE("ddname")"
+    /* Parse the captured output for VOLSER information */
+    collect = 0
+    do i = 1 to OUT.0
+        /* If the line contains NONVSAM, capture the dataset name */
+        if index(OUT.i, 'NONVSAM') > 0 then do
+            dsn = word(OUT.i, words(OUT.i))
+            if collect then leave
+            if dsn = datasetName then do
+                collect = 1
+                say "Listing datasets for" dsn
+            end
+            else collect = 0
+        end
 
-    /* Open the LISTCAT output for reading */
-    address TSO "EXECIO * DISKR "ddname" (STEM outlines. FINIS"
-
-    /* Check if we have output from LISTCAT */
-    if RC <> 0 then do
-        say "Error: Unable to read LISTCAT output for dataset:" datasetName
-        address TSO "FREE FILE("ddname")"
-        return ""
-    end
-
-    /* Loop through LISTCAT output and parse for VOLSER */
-    do i = 1 to outlines.0
-        line = outlines.i
-        if pos("VOLSER", line) > 0 then do
-            parse var line . "VOLSER" volser .
-            volserList = volserList volser
+        /* If the line contains VOLSER, extract the volume */
+        if index(OUT.i, 'VOLSER-') > 0 & collect then do
+            parse var OUT.i 'VOLSER------------' volume .
+            volserList = volserList volume
+            say "Found VOLSER:" volume
         end
     end
-
-    /* Free the temporary file after reading */
-    address TSO "FREE FILE("ddname")"
 
     return volserList
