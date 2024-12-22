@@ -2,76 +2,109 @@ import java.io.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
+
+class DailyTrack {
+    LocalDate date;
+    int usedTracks;
+
+    public DailyTrack(LocalDate date, int usedTracks) {
+        this.date = date;
+        this.usedTracks = usedTracks;
+    }
+}
 
 public class TrackSumCalculator {
 
-    public static void main(String[] args) {
-        String inputCsvFile = "daily_tracks.csv"; // Path to your input CSV file
-        String outputCsvFile = "track_summary.csv"; // Path to your output CSV file
+    public static void main(String[] args) throws IOException {
+        String csvFile = "daily_tracks.csv"; // Path to your CSV file
+        List<DailyTrack> trackData = readCsv(csvFile);
 
-        try {
-            LocalDate today = LocalDate.now(); // Today's date
-            processCsv(inputCsvFile, outputCsvFile, today);
-            System.out.println("Summary written to " + outputCsvFile);
-        } catch (IOException e) {
-            System.err.println("Error processing file: " + e.getMessage());
-        }
+        List<String> result = calculateSums(trackData);
+
+        // Print results to the console
+        result.forEach(System.out::println);
+
+        // Optionally write the result to a file
+        writeResultsToFile("track_summary.csv", result);
     }
 
-    public static void processCsv(String inputCsvFile, String outputCsvFile, LocalDate today) throws IOException {
-        // Map to hold data for the previous year's relevant range of dates
-        TreeMap<LocalDate, Integer> lastYearData = new TreeMap<>();
+    public static List<DailyTrack> readCsv(String filePath) throws IOException {
+        List<DailyTrack> trackData = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-        // Prepare the output file
-        try (BufferedReader br = new BufferedReader(new FileReader(inputCsvFile));
-             BufferedWriter bw = new BufferedWriter(new FileWriter(outputCsvFile))) {
-
-            // Read the header
-            String header = br.readLine();
-            if (header == null) {
-                throw new IOException("CSV file is empty.");
-            }
-
-            // Write the new header to the output file
-            bw.write("date,next_1_day,next_7_days,next_30_days");
-            bw.newLine();
-
-            // Date formatter
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-            // Read all data into the map
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
+            br.readLine(); // Skip header
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",");
                 LocalDate date = LocalDate.parse(parts[0], formatter);
                 int usedTracks = Integer.parseInt(parts[1]);
-                lastYearData.put(date, usedTracks);
-            }
-
-            // Calculate the results based on last year's corresponding date range
-            LocalDate todayLastYear = today.minusYears(1);
-            for (LocalDate currentDate = todayLastYear;
-                 currentDate.isBefore(todayLastYear.plusDays(31));
-                 currentDate = currentDate.plusDays(1)) {
-
-                // Calculate sums for the current date
-                int next1Day = lastYearData.getOrDefault(currentDate.plusDays(1), 0);
-                int next7Days = sumTracksInRange(lastYearData, currentDate, 1, 7);
-                int next30Days = sumTracksInRange(lastYearData, currentDate, 1, 30);
-
-                // Write the result to the output file
-                bw.write(String.format("%s,%d,%d,%d", currentDate, next1Day, next7Days, next30Days));
-                bw.newLine();
+                trackData.add(new DailyTrack(date, usedTracks));
             }
         }
+        return trackData;
     }
 
-    public static int sumTracksInRange(TreeMap<LocalDate, Integer> data, LocalDate startDate, int startOffset, int endOffset) {
+    public static List<String> calculateSums(List<DailyTrack> trackData) {
+        // Sort the data by date
+        trackData.sort(Comparator.comparing(track -> track.date));
+
+        // Create a map for quick lookups
+        Map<LocalDate, Integer> trackMap = trackData.stream()
+                .collect(Collectors.toMap(track -> track.date, track -> track.usedTracks));
+
+        List<String> result = new ArrayList<>();
+        result.add("date,next_1_day,next_7_days,next_30_days"); // CSV header
+
+        LocalDate today = LocalDate.now();
+        LocalDate todayLastYear = today.minusYears(1);
+
+        for (int offset = 0; offset < 30; offset++) {
+            LocalDate currentDate = todayLastYear.plusDays(offset);
+
+            // Handle wrap-around to January
+            LocalDate mappedDate = mapDateToLastYear(currentDate);
+
+            // Calculate sums
+            int next1Day = trackMap.getOrDefault(mappedDate.plusDays(1), 0);
+            int next7Days = sumTracksInRange(trackMap, mappedDate, 1, 7);
+            int next30Days = sumTracksInRange(trackMap, mappedDate, 1, 30);
+
+            result.add(String.format("%s,%d,%d,%d", mappedDate, next1Day, next7Days, next30Days));
+        }
+
+        return result;
+    }
+
+    public static int sumTracksInRange(Map<LocalDate, Integer> trackMap, LocalDate startDate, int startOffset, int endOffset) {
         int sum = 0;
         for (int i = startOffset; i <= endOffset; i++) {
-            sum += data.getOrDefault(startDate.plusDays(i), 0);
+            LocalDate targetDate = startDate.plusDays(i);
+
+            // Handle wrap-around
+            targetDate = mapDateToLastYear(targetDate);
+
+            sum += trackMap.getOrDefault(targetDate, 0);
         }
         return sum;
+    }
+
+    public static LocalDate mapDateToLastYear(LocalDate date) {
+        // If the date wraps to the next year, adjust it to the start of the last year
+        if (date.getYear() > LocalDate.now().getYear() - 1) {
+            return date.minusYears(1);
+        }
+        return date;
+    }
+
+    public static void writeResultsToFile(String filePath, List<String> result) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            for (String line : result) {
+                writer.write(line);
+                writer.newLine();
+            }
+        }
     }
 }
 
