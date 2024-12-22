@@ -54,14 +54,17 @@ public class TrackSumCalculator {
         Map<LocalDate, Integer> trackMap = trackData.stream()
                 .collect(Collectors.toMap(track -> track.date, track -> track.usedTracks));
 
+        // Get the year of the dataset
+        int datasetYear = trackData.get(0).date.getYear();
+
         List<String> result = new ArrayList<>();
         result.add("date,next_1_day,next_7_days,next_30_days"); // CSV header
 
         for (DailyTrack track : trackData) {
             LocalDate date = track.date;
-            int next1Day = trackMap.getOrDefault(date.plusDays(1), 0);
-            int next7Days = sumTracksInRange(trackMap, date, 1, 7);
-            int next30Days = sumTracksInRange(trackMap, date, 1, 30);
+            int next1Day = trackMap.getOrDefault(wrapToYear(date.plusDays(1), datasetYear), 0);
+            int next7Days = sumTracksInRange(trackMap, date, 1, 7, datasetYear);
+            int next30Days = sumTracksInRange(trackMap, date, 1, 30, datasetYear);
 
             result.add(String.format("%s,%d,%d,%d", date, next1Day, next7Days, next30Days));
         }
@@ -69,13 +72,18 @@ public class TrackSumCalculator {
         return result;
     }
 
-    public static int sumTracksInRange(Map<LocalDate, Integer> trackMap, LocalDate startDate, int startOffset, int endOffset) {
+    public static int sumTracksInRange(Map<LocalDate, Integer> trackMap, LocalDate startDate, int startOffset, int endOffset, int datasetYear) {
         int sum = 0;
         for (int i = startOffset; i <= endOffset; i++) {
-            LocalDate targetDate = startDate.plusDays(i);
+            LocalDate targetDate = wrapToYear(startDate.plusDays(i), datasetYear);
             sum += trackMap.getOrDefault(targetDate, 0);
         }
         return sum;
+    }
+
+    public static LocalDate wrapToYear(LocalDate date, int year) {
+        // Adjust the date to the specified year, wrapping month and day as needed
+        return LocalDate.of(year, date.getMonth(), date.getDayOfMonth());
     }
 
     public static void writeResultsToFile(String filePath, List<String> result) throws IOException {
@@ -87,4 +95,3 @@ public class TrackSumCalculator {
         }
     }
 }
-
