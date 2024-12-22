@@ -57,21 +57,13 @@ public class TrackSumCalculator {
         List<String> result = new ArrayList<>();
         result.add("date,next_1_day,next_7_days,next_30_days"); // CSV header
 
-        LocalDate today = LocalDate.now();
-        LocalDate todayLastYear = today.minusYears(1);
+        for (DailyTrack track : trackData) {
+            LocalDate date = track.date;
+            int next1Day = trackMap.getOrDefault(date.plusDays(1), 0);
+            int next7Days = sumTracksInRange(trackMap, date, 1, 7);
+            int next30Days = sumTracksInRange(trackMap, date, 1, 30);
 
-        for (int offset = 0; offset < 30; offset++) {
-            LocalDate currentDate = todayLastYear.plusDays(offset);
-
-            // Handle wrap-around to January
-            LocalDate mappedDate = mapDateToLastYear(currentDate);
-
-            // Calculate sums
-            int next1Day = trackMap.getOrDefault(mappedDate.plusDays(1), 0);
-            int next7Days = sumTracksInRange(trackMap, mappedDate, 1, 7);
-            int next30Days = sumTracksInRange(trackMap, mappedDate, 1, 30);
-
-            result.add(String.format("%s,%d,%d,%d", mappedDate, next1Day, next7Days, next30Days));
+            result.add(String.format("%s,%d,%d,%d", date, next1Day, next7Days, next30Days));
         }
 
         return result;
@@ -81,21 +73,9 @@ public class TrackSumCalculator {
         int sum = 0;
         for (int i = startOffset; i <= endOffset; i++) {
             LocalDate targetDate = startDate.plusDays(i);
-
-            // Handle wrap-around
-            targetDate = mapDateToLastYear(targetDate);
-
             sum += trackMap.getOrDefault(targetDate, 0);
         }
         return sum;
-    }
-
-    public static LocalDate mapDateToLastYear(LocalDate date) {
-        // If the date wraps to the next year, adjust it to the start of the last year
-        if (date.getYear() > LocalDate.now().getYear() - 1) {
-            return date.minusYears(1);
-        }
-        return date;
     }
 
     public static void writeResultsToFile(String filePath, List<String> result) throws IOException {
