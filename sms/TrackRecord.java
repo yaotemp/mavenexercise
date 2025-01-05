@@ -2,6 +2,7 @@ import java.time.LocalDate;
 
 class TrackRecord {
     private LocalDate date;
+    private int currentAvailableChunks; 
     private int next1Day;
     private int next7Days;
     private int next30Days;
@@ -10,9 +11,10 @@ class TrackRecord {
     private int next180Days;
 
     // Constructor
-    public TrackRecord(LocalDate date, int next1Day, int next7Days, int next30Days, 
-                       int next60Days, int next90Days, int next180Days) {
+    public TrackRecord(LocalDate date, int currentAvailableChunks, int next1Day, int next7Days, 
+                       int next30Days, int next60Days, int next90Days, int next180Days) {
         this.date = date;
+        this.currentAvailableChunks = currentAvailableChunks;
         this.next1Day = next1Day;
         this.next7Days = next7Days;
         this.next30Days = next30Days;
@@ -28,6 +30,14 @@ class TrackRecord {
 
     public void setDate(LocalDate date) {
         this.date = date;
+    }
+
+    public int getCurrentAvailableChunks() {
+        return currentAvailableChunks;
+    }
+
+    public void setCurrentAvailableChunks(int currentAvailableChunks) {
+        this.currentAvailableChunks = currentAvailableChunks;
     }
 
     public int getNext1Day() {
@@ -80,7 +90,7 @@ class TrackRecord {
 
     @Override
     public String toString() {
-        return date + "," + next1Day + "," + next7Days + "," + next30Days + "," +
-               next60Days + "," + next90Days + "," + next180Days;
+        return date + "," + currentAvailableChunks + "," + next1Day + "," + next7Days + "," + 
+               next30Days + "," + next60Days + "," + next90Days + "," + next180Days;
     }
 }
