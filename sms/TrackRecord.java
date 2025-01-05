@@ -1,8 +1,16 @@
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 class TrackRecord {
+    private String volSer; // Volume Serial
     private LocalDate date;
-    private int currentAvailableChunks; 
+    private LocalTime time;
+    private double freePercentage;
+    private int freeCylinder;
+    private int cylinderThreshold;
+    private int matchedVolumes;
+    private int volumesBelowThreshold;
+    private int currentAvailableChunks; // Moved as the second field
     private int next1Day;
     private int next7Days;
     private int next30Days;
@@ -11,9 +19,18 @@ class TrackRecord {
     private int next180Days;
 
     // Constructor
-    public TrackRecord(LocalDate date, int currentAvailableChunks, int next1Day, int next7Days, 
-                       int next30Days, int next60Days, int next90Days, int next180Days) {
+    public TrackRecord(String volSer, LocalDate date, LocalTime time, double freePercentage, 
+                       int freeCylinder, int cylinderThreshold, int matchedVolumes, 
+                       int volumesBelowThreshold, int currentAvailableChunks, int next1Day, 
+                       int next7Days, int next30Days, int next60Days, int next90Days, int next180Days) {
+        this.volSer = volSer;
         this.date = date;
+        this.time = time;
+        this.freePercentage = freePercentage;
+        this.freeCylinder = freeCylinder;
+        this.cylinderThreshold = cylinderThreshold;
+        this.matchedVolumes = matchedVolumes;
+        this.volumesBelowThreshold = volumesBelowThreshold;
         this.currentAvailableChunks = currentAvailableChunks;
         this.next1Day = next1Day;
         this.next7Days = next7Days;
@@ -24,12 +41,68 @@ class TrackRecord {
     }
 
     // Getters and Setters
+    public String getVolSer() {
+        return volSer;
+    }
+
+    public void setVolSer(String volSer) {
+        this.volSer = volSer;
+    }
+
     public LocalDate getDate() {
         return date;
     }
 
     public void setDate(LocalDate date) {
         this.date = date;
+    }
+
+    public LocalTime getTime() {
+        return time;
+    }
+
+    public void setTime(LocalTime time) {
+        this.time = time;
+    }
+
+    public double getFreePercentage() {
+        return freePercentage;
+    }
+
+    public void setFreePercentage(double freePercentage) {
+        this.freePercentage = freePercentage;
+    }
+
+    public int getFreeCylinder() {
+        return freeCylinder;
+    }
+
+    public void setFreeCylinder(int freeCylinder) {
+        this.freeCylinder = freeCylinder;
+    }
+
+    public int getCylinderThreshold() {
+        return cylinderThreshold;
+    }
+
+    public void setCylinderThreshold(int cylinderThreshold) {
+        this.cylinderThreshold = cylinderThreshold;
+    }
+
+    public int getMatchedVolumes() {
+        return matchedVolumes;
+    }
+
+    public void setMatchedVolumes(int matchedVolumes) {
+        this.matchedVolumes = matchedVolumes;
+    }
+
+    public int getVolumesBelowThreshold() {
+        return volumesBelowThreshold;
+    }
+
+    public void setVolumesBelowThreshold(int volumesBelowThreshold) {
+        this.volumesBelowThreshold = volumesBelowThreshold;
     }
 
     public int getCurrentAvailableChunks() {
@@ -90,7 +163,10 @@ class TrackRecord {
 
     @Override
     public String toString() {
-        return date + "," + currentAvailableChunks + "," + next1Day + "," + next7Days + "," + 
-               next30Days + "," + next60Days + "," + next90Days + "," + next180Days;
+        return volSer + "," + date + "," + time + "," + freePercentage + "," +
+               freeCylinder + "," + cylinderThreshold + "," + matchedVolumes + "," +
+               volumesBelowThreshold + "," + currentAvailableChunks + "," +
+               next1Day + "," + next7Days + "," + next30Days + "," +
+               next60Days + "," + next90Days + "," + next180Days;
     }
 }
