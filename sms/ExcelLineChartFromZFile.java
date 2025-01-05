@@ -28,37 +28,55 @@ public class ExcelLineChartFromZFile {
 
         // Open the ZFile for reading
         ZFile zfile = new ZFile(datasetPath, "rb,type=record");
+        boolean isFirstLine = true; // Flag to detect the first line (header)
         try {
             byte[] recordBuffer = new byte[zfile.getLrecl()];
             while (zfile.read(recordBuffer) != -1) {
                 String record = new String(recordBuffer).trim();
 
-                if (record.length() < 73) {
+                // Skip the first line (header)
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue;
+                }
+
+                // Skip empty lines
+                if (record.isEmpty()) continue;
+
+                // Split the record by commas
+                String[] parts = record.split(",");
+
+                // Ensure there are enough fields
+                if (parts.length < 15) {
                     System.err.println("Skipping invalid record: " + record);
                     continue;
                 }
 
-                // Parse fixed-width fields
-                String volSer = record.substring(0, 6).trim();
-                LocalDate date = LocalDate.parse(record.substring(6, 16).trim());
-                LocalTime time = LocalTime.parse(record.substring(16, 24).trim());
-                double freePercentage = Double.parseDouble(record.substring(24, 29).trim());
-                int freeCylinder = Integer.parseInt(record.substring(29, 33).trim());
-                int cylinderThreshold = Integer.parseInt(record.substring(33, 37).trim());
-                int matchedVolumes = Integer.parseInt(record.substring(37, 41).trim());
-                int volumesBelowThreshold = Integer.parseInt(record.substring(41, 45).trim());
-                int currentAvailableChunks = Integer.parseInt(record.substring(45, 49).trim());
-                int next1Day = Integer.parseInt(record.substring(49, 53).trim());
-                int next7Days = Integer.parseInt(record.substring(53, 57).trim());
-                int next30Days = Integer.parseInt(record.substring(57, 61).trim());
-                int next60Days = Integer.parseInt(record.substring(61, 65).trim());
-                int next90Days = Integer.parseInt(record.substring(65, 69).trim());
-                int next180Days = Integer.parseInt(record.substring(69, 73).trim());
+                try {
+                    // Parse fields, trimming padding spaces
+                    String volSer = parts[0].trim();
+                    LocalDate date = LocalDate.parse(parts[1].trim());
+                    LocalTime time = LocalTime.parse(parts[2].trim());
+                    double freePercentage = Double.parseDouble(parts[3].trim());
+                    int freeCylinder = Integer.parseInt(parts[4].trim());
+                    int cylinderThreshold = Integer.parseInt(parts[5].trim());
+                    int matchedVolumes = Integer.parseInt(parts[6].trim());
+                    int volumesBelowThreshold = Integer.parseInt(parts[7].trim());
+                    int currentAvailableChunks = Integer.parseInt(parts[8].trim());
+                    int next1Day = Integer.parseInt(parts[9].trim());
+                    int next7Days = Integer.parseInt(parts[10].trim());
+                    int next30Days = Integer.parseInt(parts[11].trim());
+                    int next60Days = Integer.parseInt(parts[12].trim());
+                    int next90Days = Integer.parseInt(parts[13].trim());
+                    int next180Days = Integer.parseInt(parts[14].trim());
 
-                // Create TrackRecord object
-                records.add(new TrackRecord(volSer, date, time, freePercentage, freeCylinder,
-                        cylinderThreshold, matchedVolumes, volumesBelowThreshold, currentAvailableChunks,
-                        next1Day, next7Days, next30Days, next60Days, next90Days, next180Days));
+                    // Create TrackRecord object
+                    records.add(new TrackRecord(volSer, date, time, freePercentage, freeCylinder,
+                            cylinderThreshold, matchedVolumes, volumesBelowThreshold, currentAvailableChunks,
+                            next1Day, next7Days, next30Days, next60Days, next90Days, next180Days));
+                } catch (Exception ex) {
+                    System.err.println("Error parsing record: " + record + " - " + ex.getMessage());
+                }
             }
         } finally {
             zfile.close();
