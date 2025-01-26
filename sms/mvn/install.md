@@ -1,20 +1,22 @@
 ```
 mvn install:install-file \
-    -Dfile=/path/to/db2jcc4.jar \
+    -Dfile=C:/Temp/db2jcc4.jar \
     -DgroupId=com.ibm.db2 \
     -DartifactId=db2jcc4 \
     -Dversion=4.0 \
     -Dpackaging=jar
 
+
 ```
 
 ```
 mvn install:install-file \
-    -Dfile=/path/to/db2jcc_license_cisuz.jar \
+    -Dfile=C:/Temp/db2jcc_license_cisuz.jar \
     -DgroupId=com.ibm.db2 \
     -DartifactId=db2jcc-license-cisuz \
     -Dversion=4.0 \
     -Dpackaging=jar
+
 
 ```
 
