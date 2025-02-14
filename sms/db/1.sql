@@ -1,6 +1,7 @@
 -- Table 1: DASD_FREESPACE_RECORD
 CREATE TABLE DASD_FREESPACE_RECORD (
     ID                    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- Auto-incrementing ID
+    QUERY_DATE             DATE,
     VOLUME_SERIAL         CHAR(10) NOT NULL,                               -- Volume Serial
     MOUNT_ATTR            CHAR(50),                                        -- Mount Attributes
     DEVICE_TYPE           CHAR(20),                                        -- Device Type
@@ -21,9 +22,7 @@ CREATE TABLE DASD_FREESPACE_RECORD (
     CYLS_ON_VOL           INTEGER NOT NULL,                                -- Cylinders on Volume
     SMS_VOL_STATUS        CHAR(20),                                        -- SMS Volume Status
     ALLOC_CNTR            CHAR(10),                                        -- Allocation Counter
-    FC_DS_FLAG            CHAR(5),                                         -- Feature Dataset Flag
-    CREATED_AT            TIMESTAMP DEFAULT CURRENT TIMESTAMP,             -- Record creation timestamp
-    UPDATED_AT            TIMESTAMP DEFAULT CURRENT TIMESTAMP ON UPDATE AS ROW CHANGE TIMESTAMP
+    FC_DS_FLAG            CHAR(5),                                         -- Feature Dataset Flag  
 )
 IN DATABASE_NAME.TABLESPACE_NAME;
 
